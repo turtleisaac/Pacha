@@ -43,7 +43,7 @@ def create():
             creator = PatchCreator(modified_path, original_path)
             creator.create()
 
-            f_out = filedialog.asksaveasfile(title='Select Output File', mode='w', defaultextension=".pacha")
+            f_out = filedialog.asksaveasfile(title='Select Output File', mode='w', defaultextension=".dspatch")
             if f_out is None:  # asksaveasfile return `None` if dialog closed with "cancel".
                 return
             filepath_output = os.path.abspath(f_out.name)
@@ -56,7 +56,7 @@ def create():
 
 def apply():
     patch_filetype = [
-        ('Pacha File', '*.pacha')
+        ('Pacha File', '*.dspatch')
     ]
 
     rom_filetype = [
