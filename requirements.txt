@@ -1,0 +1,5 @@
+ndspy
+ttkthemes
+wheel
+Pillow
+xdelta3

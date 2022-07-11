@@ -43,20 +43,26 @@ def create():
             creator = PatchCreator(modified_path, original_path)
             creator.create()
 
-            f_out = filedialog.asksaveasfile(title='Select Output File', mode='w', defaultextension=".dspatch")
+            if creator.xdelta:
+                messagebox.showwarning(title='Pacha Creator', message='The modified ROM has code binaries which do '
+                                                                      'not match the original. Therefore, this patch '
+                                                                      'is locked to compatibility with %s only to '
+                                                                      'maintain compatibility' %
+                                                                      bytes(creator.game_code).decode(encoding='UTF-8'))
+
+            f_out = filedialog.asksaveasfilename(title='Select Output File', defaultextension=".pacha")
             if f_out is None:  # asksaveasfile return `None` if dialog closed with "cancel".
                 return
-            filepath_output = os.path.abspath(f_out.name)
-            f_out.close()
+            filepath_output = os.path.abspath(f_out)
 
             creator.pickle(filepath_output)
             messagebox.showinfo(title='Pacha Creator', message='Patch Creation Complete! Output can be found at:\n' +
-                                                       filepath_output)
+                                                               filepath_output)
 
 
 def apply():
     patch_filetype = [
-        ('Pacha File', '*.dspatch')
+        ('Pacha File', '*.pacha')
     ]
 
     rom_filetype = [
@@ -74,6 +80,14 @@ def apply():
             original_in.close()
 
             applier = PatchApplier(patch_path, original_path)
+            if applier.valid_patch == applier.PatchValidation.INVALID_PATCH_FILE:
+                messagebox.showerror(title='Pacha Applier', message='Provided patch file is invalid. Action aborted.')
+            elif applier.valid_patch == applier.PatchValidation.INVALID_ROM_FILE:
+                messagebox.showerror(title='Pacha Applier', message='Provided ROM file is invalid. Action aborted.')
+            elif applier.valid_patch == applier.PatchValidation.INVALID_ROM_GAME_CODE:
+                messagebox.showerror(title='Pacha Applier', message='Provided ROM file is not of gamecode %s. Action '
+                                                                    'Aborted' % applier.game_code)
+
             applier.apply()
 
             f_out = filedialog.asksaveasfile(title='Select Output ROM', mode='w', defaultextension=".nds")
