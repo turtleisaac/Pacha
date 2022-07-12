@@ -50,8 +50,11 @@ class PatchCreator:
 
         for index in range(num_overlays):
             self.create_for_binaries(self.modified.files[index], self.original.files[index], index)
-        self.create_for_binaries(self.modified.arm9, self.original.arm9, -1)
-        self.create_for_binaries(self.modified.arm7, self.original.arm7, -2)
+        self.create_for_binaries(self.modified.arm9, self.original.arm9, BinaryIds.ARM9)
+        self.create_for_binaries(self.modified.arm7, self.original.arm7, BinaryIds.ARM7)
+        self.create_for_binaries(self.modified.arm9OverlayTable, self.original.arm9OverlayTable, BinaryIds.Y9)
+        self.create_for_binaries(self.modified.arm7OverlayTable, self.original.arm7OverlayTable, BinaryIds.Y7)
+        self.create_for_binaries(self.modified.iconBanner, self.original.iconBanner, BinaryIds.ICON_BANNER)
 
     def create_for_binaries(self, modified_file, original_file, index):
         if modified_file != original_file:
@@ -109,10 +112,18 @@ class PatchApplier:
                     if patch.file_id >= 0:  # file is not arm9 or arm7 - therefore is overlay
                         self.rom.files[patch.file_id] = bytearray(xdelta3.decode(bytes(self.rom.files[patch.file_id]), patch.data))
                     else:  # file is arm9 or arm7
-                        if patch.file_id == -1:  # file is arm9
+                        if patch.file_id == BinaryIds.ARM9:  # file is arm9
                             self.rom.arm9 = bytearray(xdelta3.decode(bytes(self.rom.arm9), patch.data))
-                        else:  # file is arm7
+                        elif patch.file_id == BinaryIds.ARM7:  # file is arm7
                             self.rom.arm7 = bytearray(xdelta3.decode(bytes(self.rom.arm7), patch.data))
+                        elif patch.file_id == BinaryIds.Y9:  # file is y9
+                            self.rom.arm9OverlayTable = bytearray(
+                                xdelta3.decode(bytes(self.rom.arm9OverlayTable), patch.data))
+                        elif patch.file_id == BinaryIds.Y7:  # file is y7
+                            self.rom.arm7OverlayTable = bytearray(
+                                xdelta3.decode(bytes(self.rom.arm7OverlayTable), patch.data))
+                        elif patch.file_id == BinaryIds.ICON_BANNER:  # file is icon/banner
+                            self.rom.iconBanner = bytearray(xdelta3.decode(bytes(self.rom.iconBanner), patch.data))
 
     def write(self, output_file):
         self.rom.saveToFile(output_file)
@@ -123,6 +134,13 @@ class PatchApplier:
         INVALID_ROM_FILE = 2
         INVALID_ROM_GAME_CODE = 3
 
+
+class BinaryIds(Enum):
+    ARM9 = -1
+    ARM7 = -2
+    Y9 = -3
+    Y7 = -4
+    ICON_BANNER = -5
 
 class Patch:
     def __init__(self, file_id, data, sub_file_id=-1, binary=False):
