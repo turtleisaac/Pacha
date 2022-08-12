@@ -55,12 +55,26 @@ class PatchCreator:
         self.create_for_binaries(self.modified.arm9OverlayTable, self.original.arm9OverlayTable, BinaryIds.Y9)
         self.create_for_binaries(self.modified.arm7OverlayTable, self.original.arm7OverlayTable, BinaryIds.Y7)
         self.create_for_binaries(self.modified.iconBanner, self.original.iconBanner, BinaryIds.ICON_BANNER)
+        self.create_for_header()
+
+
 
     def create_for_binaries(self, modified_file, original_file, index):
         if modified_file != original_file:
             self.xdelta = True
             delta = xdelta3.encode(bytes(original_file), bytes(modified_file))
             self.patches.append(Patch(index, delta, binary=True))
+
+    def create_for_header(self):
+        modified_header = self.create_header_chunk(self.modified)
+        self.patches.append(Patch(BinaryIds.HEADER, modified_header, binary=True))
+        
+
+    def create_header_chunk(self, rom):
+        return (rom.name, rom.idCode, rom.developerCode, rom.unitCode,
+        rom.encryptionSeedSelect, rom.deviceCapacity, rom.pad015, rom.pad016,
+        rom.pad017, rom.pad018, rom.pad019, rom.pad01A, rom.pad01B,
+        rom.pad01C, rom.region, rom.version, rom.autostart)
 
     def pickle(self, output_file):
         with open(output_file, 'wb') as out_file:
@@ -106,12 +120,13 @@ class PatchApplier:
                         narc.files[sub_patch.sub_file_id] = sub_patch.data
                 self.rom.files[index] = narc.save()
             else:
-                if not patch.binary:  # file is not a code binary
+                if not patch.binary:  # file is not a code binary or misc data file (is a non-narc file)
                     self.rom.files[patch.file_id] = patch.data
-                else:  # file is a code binary
-                    if patch.file_id >= 0:  # file is not arm9 or arm7 - therefore is overlay
-                        self.rom.files[patch.file_id] = bytearray(xdelta3.decode(bytes(self.rom.files[patch.file_id]), patch.data))
-                    else:  # file is arm9 or arm7
+                else:  # file is a code binary or misc data file
+                    if patch.file_id >= 0:  # file is not arm9, arm7, y9, y7, icon/banner, or header patch - therefore is overlay
+                        self.rom.files[patch.file_id] = bytearray(
+                            xdelta3.decode(bytes(self.rom.files[patch.file_id]), patch.data))
+                    else:  # file is arm9, arm7, y9, y7, icon/banner, or header
                         if patch.file_id == BinaryIds.ARM9:  # file is arm9
                             self.rom.arm9 = bytearray(xdelta3.decode(bytes(self.rom.arm9), patch.data))
                         elif patch.file_id == BinaryIds.ARM7:  # file is arm7
@@ -124,6 +139,28 @@ class PatchApplier:
                                 xdelta3.decode(bytes(self.rom.arm7OverlayTable), patch.data))
                         elif patch.file_id == BinaryIds.ICON_BANNER:  # file is icon/banner
                             self.rom.iconBanner = bytearray(xdelta3.decode(bytes(self.rom.iconBanner), patch.data))
+                        elif patch.file_id == BinaryIds.HEADER:  # patch is the header info
+                            self.apply_header_chunk(patch.data)
+
+    def apply_header_chunk(self, header_data):
+        self.rom.name = header_data[0]
+        self.rom.idCode = header_data[1]
+        self.rom.developerCode = header_data[2]
+        self.rom.unitCode = header_data[3]
+        self.rom.encryptionSeedSelect = header_data[4]
+        self.rom.deviceCapacity = header_data[5]
+        self.rom.pad015 = header_data[6]
+        self.rom.pad016 = header_data[7]
+        self.rom.pad017 = header_data[8]
+        self.rom.pad018 = header_data[9]
+        self.rom.pad019 = header_data[10]
+        self.rom.pad01A = header_data[11]
+        self.rom.pad01B = header_data[12]
+        self.rom.pad01C = header_data[13]
+        self.rom.region = header_data[14]
+        self.rom.version = header_data[15]
+        self.rom.autostart = header_data[16]
+        pass
 
     def write(self, output_file):
         self.rom.saveToFile(output_file)
@@ -141,6 +178,8 @@ class BinaryIds(Enum):
     Y9 = -3
     Y7 = -4
     ICON_BANNER = -5
+    HEADER = -6
+
 
 class Patch:
     def __init__(self, file_id, data, sub_file_id=-1, binary=False):
@@ -167,3 +206,8 @@ class PatchContainer:
             self.game_code = game_code
         else:
             self.game_code = game_code[:3]
+
+
+class HeaderPatch:
+    def __init__(self):
+        pass
